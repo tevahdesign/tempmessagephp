@@ -3,10 +3,10 @@ FROM php:8.3-apache
 # Set working directory
 WORKDIR /var/www/html
 
-# Install base system dependencies
+# Install dependencies (Bookworm-safe)
 RUN apt-get update && apt-get install -y \
     libzip-dev \
-    libpng-dev \
+    libpng16-dev \
     libxml2-dev \
     libicu-dev \
     libssl-dev \
@@ -15,12 +15,13 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     wget \
+    pkg-config \
     build-essential \
  && docker-php-ext-configure intl \
  && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Build IMAP from PHP source (avoids missing libc-client-dev)
+# ✅ Build IMAP directly from PHP source (no missing system packages)
 RUN docker-php-source extract \
  && cd /usr/src/php/ext/imap \
  && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
@@ -30,16 +31,16 @@ RUN docker-php-source extract \
 # Enable Apache rewrite
 RUN a2enmod rewrite
 
-# Copy application code
+# Copy app source code
 COPY . .
 
-# Set Apache DocumentRoot to /public (for Laravel or similar frameworks)
+# Set document root to /public (Laravel-style)
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
-# PHP custom configuration
+# Enable allow_url_fopen
 RUN echo "allow_url_fopen=On" > /usr/local/etc/php/conf.d/custom.ini
 
-# Install Composer
+# Install Composer globally
 RUN wget https://getcomposer.org/installer -O composer-setup.php \
  && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
  && rm composer-setup.php
