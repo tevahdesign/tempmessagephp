@@ -2,7 +2,7 @@ FROM php:8.3-apache
 
 WORKDIR /var/www/html
 
-# Install build tools and libraries
+# Install libraries and build tools
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     libpng-dev \
@@ -10,8 +10,7 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libssl-dev \
     libkrb5-dev \
-    libc-client2007e-dev \
-    libpam0g-dev \
+    dovecot-dev \
     zlib1g-dev \
     git \
     unzip \
@@ -24,17 +23,14 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache rewrite
 RUN a2enmod rewrite
 
-# Copy app files
+# Copy app code
 COPY . .
 
-# Point Apache to the /public directory
+# Point Apache to /public
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
-# PHP config tweaks
+# PHP config
 RUN echo "allow_url_fopen=On" > /usr/local/etc/php/conf.d/custom.ini
-
-# Permissions
-RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 80
 CMD ["apache2-foreground"]
