@@ -1,6 +1,6 @@
 FROM php:8.3-fpm
 
-# Install dependencies and PHP extensions
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     libpng-dev \
@@ -8,8 +8,9 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libssl-dev \
     libkrb5-dev \
-    libc-client-dev \
-    libkrb5-dev \
+    libpam0g-dev \
+    libcurl4-openssl-dev \
+    libc-client2007e-dev \
     zlib1g-dev \
     git \
     unzip \
@@ -21,11 +22,8 @@ RUN apt-get update && apt-get install -y \
  && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo gd imap \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Enable recommended PHP settings
-RUN echo "allow_url_fopen=On" >> /usr/local/etc/php/conf.d/docker-php-allow-url-fopen.ini
+# Enable allow_url_fopen
+RUN echo "allow_url_fopen=On" > /usr/local/etc/php/conf.d/docker-php-allow-url-fopen.ini
 
-# Expose port
 EXPOSE 9000
-
-# Start PHP-FPM
 CMD ["php-fpm"]
