@@ -1,6 +1,7 @@
-FROM php:8.3-fpm
+# ---------- 1. Base Image ----------
+FROM php:8.2-apache
 
-# Install dependencies including oniguruma for mbstring and system php-imap
+# ---------- 2. Install Dependencies ----------
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     libpng-dev \
@@ -16,14 +17,27 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libcurl4-openssl-dev \
     libonig-dev \
-    php-imap \
  && docker-php-ext-configure intl \
  && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo gd \
- && docker-php-ext-enable imap \
+ && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+ && docker-php-ext-install imap \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /var/www/html
-COPY . .
+# ---------- 3. Enable Apache Rewrite Module ----------
+RUN a2enmod rewrite
 
-EXPOSE 9000
-CMD ["php-fpm"]
+# ---------- 4. Set Working Directory ----------
+WORKDIR /var/www/html
+
+# ---------- 5. Copy Project Files ----------
+COPY . /var/www/html
+
+# ---------- 6. Set Permissions ----------
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# ---------- 7. Expose Web Port ----------
+EXPOSE 80
+
+# ---------- 8. Start Apache ----------
+CMD ["apache2-foreground"]
