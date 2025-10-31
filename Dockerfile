@@ -1,6 +1,6 @@
 FROM php:8.3-fpm
 
-# Install dependencies including oniguruma for mbstring
+# Install dependencies including oniguruma for mbstring and system php-imap
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     libpng-dev \
@@ -16,14 +16,11 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libcurl4-openssl-dev \
     libonig-dev \
+    php-imap \
  && docker-php-ext-configure intl \
  && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo gd \
- && pecl install imap \
  && docker-php-ext-enable imap \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Enable common PHP options
-RUN echo "allow_url_fopen=On" > /usr/local/etc/php/conf.d/docker-php-allow-url-fopen.ini
 
 WORKDIR /var/www/html
 COPY . .
