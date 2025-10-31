@@ -1,7 +1,6 @@
-# ---------- 1. Base Image ----------
 FROM php:8.3-apache
 
-# ---------- 2. Install Dependencies ----------
+# ---------- 1. Install Dependencies ----------
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     libpng-dev \
@@ -17,33 +16,27 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     libonig-dev \
     libkrb5-dev \
-    dovecot-imapd \
+    libpam0g-dev \
+    libssl-dev \
  && docker-php-ext-configure intl \
- && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo gd \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+ && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo gd
 
-# ---------- 3. Build IMAP Extension Manually ----------
-RUN docker-php-source extract \
- && cd /usr/src/php/ext/imap \
- && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
- && docker-php-ext-install imap \
- && docker-php-source delete
+# ---------- 2. Patch + Build IMAP ----------
+WORKDIR /usr/src
+RUN git clone https://github.com/php/imap.git php-imap-fixed && \
+    cd php-imap-fixed && \
+    phpize && \
+    ./configure --with-kerberos --with-imap-ssl && \
+    make && make install && \
+    echo "extension=imap.so" > /usr/local/etc/php/conf.d/imap.ini
 
-# ---------- 4. Enable Apache Rewrite Module ----------
+# ---------- 3. Enable Apache Rewrite ----------
 RUN a2enmod rewrite
 
-# ---------- 5. Set Working Directory ----------
+# ---------- 4. Copy Project Files ----------
 WORKDIR /var/www/html
-
-# ---------- 6. Copy Project Files ----------
 COPY . /var/www/html
+RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
 
-# ---------- 7. Set Permissions ----------
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
-
-# ---------- 8. Expose Web Port ----------
 EXPOSE 80
-
-# ---------- 9. Start Apache ----------
 CMD ["apache2-foreground"]
