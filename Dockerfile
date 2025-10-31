@@ -1,14 +1,15 @@
 # ---------- 1. Base Image ----------
-FROM php:8.2-apache
+FROM php:8.2-fpm
 
 # ---------- 2. Install Dependencies ----------
 RUN apt-get update && apt-get install -y \
+    libc-client-dev \
+    libkrb5-dev \
+    libssl-dev \
     libzip-dev \
     libpng-dev \
     libxml2-dev \
     libicu-dev \
-    libssl-dev \
-    libkrb5-dev \
     zlib1g-dev \
     git \
     unzip \
@@ -17,27 +18,28 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libcurl4-openssl-dev \
     libonig-dev \
- && docker-php-ext-configure intl \
- && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo gd \
- && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
- && docker-php-ext-install imap \
+    ca-certificates \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ---------- 3. Enable Apache Rewrite Module ----------
-RUN a2enmod rewrite
+# ---------- 3. Build IMAP (fixed version) ----------
+RUN cd /usr/src && \
+    wget https://github.com/uw-imap/imap/archive/refs/heads/master.zip -O imap.zip && \
+    unzip imap.zip && mv imap-master imap && cd imap && \
+    make slx EXTRAAUTHENTICATORS=gss && \
+    cp c-client/*.h /usr/include/ && \
+    cp c-client/*.c /usr/include/ && \
+    cp c-client/*.a /usr/lib/
 
-# ---------- 4. Set Working Directory ----------
+# ---------- 4. Compile PHP Extensions ----------
+RUN docker-php-ext-configure intl \
+ && docker-php-ext-install intl pdo pdo_mysql mbstring xml ctype bcmath zip fileinfo gd \
+ && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+ && docker-php-ext-install imap
+
+# ---------- 5. Working Directory ----------
 WORKDIR /var/www/html
+COPY . .
 
-# ---------- 5. Copy Project Files ----------
-COPY . /var/www/html
-
-# ---------- 6. Set Permissions ----------
+# ---------- 6. Permissions ----------
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
-
-# ---------- 7. Expose Web Port ----------
-EXPOSE 80
-
-# ---------- 8. Start Apache ----------
-CMD ["apache2-foreground"]
+ && chmod -R 755 /var/www/html
